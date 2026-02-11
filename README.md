@@ -141,6 +141,16 @@ I plan to continue exploring what intent analysis can achieve in detecting and p
 
 Lastly, I'm **k66**, and also a co-founder of [**SuiAudit**](https://github.com/suigurad). I invite you to follow SuiAudit's development as we work to make the Sui ecosystem safer for everyone.
 
+## AI Tool Disclosure
+
+### 🛠 Tools & Models
+| Tool / Interface | Model Version | Primary Use Case |
+| :--- | :--- | :--- |
+| **Claude Code CLI** | Claude 3.5 Sonnet / Opus 4.6 (Internal) | **Main Development:** Core logic, Move 2024 contract architecture, and systematic debugging. |
+| **GitHub Copilot CLI** | GitHub Copilot (Codex) | **Development Aid:** Quick CLI command generation and minor boilerplate code snippets. |
+| **Gemini** | Gemini 3 Pro | **Planning:** Project ideation, technical roadmap planning, and Sui ecosystem research. |
+| **OpenClaw** | Experimental Models | **Experimentation:** Used for logic flow exploration and code optimization testing. |
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
