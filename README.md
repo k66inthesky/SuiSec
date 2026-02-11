@@ -29,6 +29,8 @@ The core intent analysis logic is implemented in `main.py`, with agent integrati
 
 + Install from ClawHub
   ```
+  Goto https://clawhub.ai/skills search suisec or
+  just jump into https://clawhub.ai/k66inthesky/suisec
   ```
 
 + Locol Install
