@@ -27,24 +27,31 @@ The core intent analysis logic is implemented in `main.py`, with agent integrati
 
 ### Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/suisec.git
-cd suisec
++ Install from ClawHub
+  ```
+  ```
 
-# Run setup (installs Sui CLI if needed)
-./setup.sh
-```
++ Locol Install
+  ```bash
+  # Clone the repository
+  git clone https://github.com/yourusername/suisec.git
+  cd suisec
+  
+  # Run setup (installs Sui CLI if needed)
+  ./setup.sh
+  ```
 
 ### Usage
 
-```bash
-# Basic syntax
-python3 main.py <EXPECTED_SUI_COST> '<SUI_PTB_COMMAND>'
++ Example Prompt1 for OpenClaw
+  ```bash
+  I want to buy the FakeNFT from this contract: 0x76a28891c190e3065ee0c9f7377ea64b10a1a7a3073ee4fcb8354911d51bfdf7. The price is 0.01 SUI. Run the SuiSec audit first—if the result is SAFE, just go ahead and execute the transaction for me.
+  ```
 
-# Example: Safe NFT purchase for 0.01 SUI
-python3 main.py 0.01 'sui client ptb --move-call 0xPKG::module::safe_buy @0xCOIN @0xNFT --gas-budget 20000000'
-```
++ Example Prompt2 for OpenClaw
+  ```
+  I found another NFT on sale at the same contract address. It's also 0.01 SUI, but this one uses the hidden_steal function. Audit it first, and only execute if it's safe.
+  ```
 
 **Execution Logic:**
 | Output | Exit Code | Action |
