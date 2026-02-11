@@ -1,6 +1,12 @@
-# SuiSec 🛡️
+<div align="center">
+
+# SuiSec 🛡️🦞💧
+<img width="128" height="128" alt="SuiSec128x128" src="https://github.com/user-attachments/assets/4d208dc0-e078-4e91-aedc-ea1419dee3c7" />
 
 **A security extension for OpenClaw's Sui client call and PTB dry-run capabilities**
+
+</div>
+
 
 SuiSec is an OpenClaw extension that performs intent analysis on every Sui transaction before execution. By leveraging `sui client call --dry-run` and `sui client ptb --dry-run`, SuiSec compares the simulated transaction results against the user's declared intent to detect malicious contract behavior and prevent asset theft.
 
