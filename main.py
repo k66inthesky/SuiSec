@@ -116,7 +116,9 @@ def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner
         print(f"✅ [RESULT] SAFE TO SIGN.")
         return False
 
-def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> list:
+
+
+def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> List[tuple]:
     """Stub — implemented in Task 4."""
     return []
 
@@ -126,8 +128,13 @@ def main():
         print("Usage: python3 main.py <intended_cost> '<sui_command>'")
         sys.exit(1)
 
-    intended_cost = float(sys.argv[1])
     raw_cmd = sys.argv[2]
+
+    try:
+        intended_cost = float(sys.argv[1])
+    except ValueError:
+        print(f"❌ Error: intended_cost must be a number, got '{sys.argv[1]}'")
+        sys.exit(1)
 
     # 1. Execute secure simulation
     raw_output = run_simulation(raw_cmd)

@@ -120,10 +120,9 @@ def test_audit_balance_changes_does_not_exit(capsys):
         ]
     }
     try:
-        result = main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
+        main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
     except SystemExit:
         pytest.fail("audit_balance_changes() must not call sys.exit()")
-    assert result is True
 
 
 def test_audit_balance_changes_no_closing_separator(capsys):
@@ -153,9 +152,8 @@ def test_main_exits_when_too_few_args(monkeypatch):
 
 
 def test_main_cost_is_argv1_not_argv2(monkeypatch):
-    """Cost is argv[1] — a non-float argv[1] raises ValueError, not argv[2]."""
-    # If arg order were swapped (command first), "not_a_float" in argv[1] would
-    # be passed to run_simulation() instead of float(), and no ValueError would occur.
+    """Cost is argv[1] — a non-float argv[1] exits cleanly with code 1, not argv[2]."""
     monkeypatch.setattr(sys, "argv", ["main.py", "not_a_float", "sui client ptb --gas-budget 1"])
-    with pytest.raises((SystemExit, ValueError)):
+    with pytest.raises(SystemExit) as exc:
         main.main()
+    assert exc.value.code == 1
