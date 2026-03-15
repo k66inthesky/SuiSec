@@ -21,9 +21,13 @@ For `sui client ptb` **and** `sui client call` commands, run the automated audit
 python3 main.py <INTENDED_SUI_COST> '<FULL_SUI_COMMAND>'
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# sui client ptb:
 python3 main.py 0.01 'sui client ptb --move-call 0xPKG::module::function @0xCOIN @0xNFT --gas-budget 20000000'
+
+# sui client call:
+python3 main.py 0.01 'sui client call --package 0xPKG --module module --function function --args @0xCOIN --gas-budget 20000000'
 ```
 
 SuiSec will automatically:
@@ -84,9 +88,13 @@ If the automated audit is not available (e.g. network issues, unsupported flags)
 
 **SAFE TO SIGN (all checks pass) → Approve execution**
 - Inform the user: "SuiSec audit passed. Dry-run results are consistent with your intent. Ready to execute."
-- Remove the `--dry-run` flag and execute the real transaction:
+- Remove the `--dry-run` flag and execute the original transaction (use whichever form was audited):
   ```bash
+  # For sui client ptb:
   sui client ptb <PTB_COMMANDS>
+
+  # For sui client call:
+  sui client call --package <PKG> --module <MOD> --function <FN> --args <ARGS> --gas-budget <BUDGET>
   ```
 - Report the transaction digest and execution result.
 
