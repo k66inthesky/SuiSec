@@ -5,6 +5,41 @@ import shlex
 import re
 from typing import List, Dict, Any
 
+# --- Constants ---
+
+SYSTEM_ADDRESSES = {"0x1", "0x2", "0x3", "0x5", "0x6", "0x7", "0x8"}
+
+
+def get_address(owner_field) -> str:
+    """Extract address string from owner field (plain string or {"AddressOwner": ...} dict)."""
+    if isinstance(owner_field, str):
+        return owner_field
+    if isinstance(owner_field, dict):
+        return owner_field.get("AddressOwner")
+    return None
+
+
+def detect_sender(balance_changes: List[Dict[str, Any]]) -> str:
+    """
+    Auto-detect sender from dry-run balanceChanges.
+    Returns the address with the most negative SUI balance change.
+    Exits with code 1 if no negative SUI entry found (inconclusive simulation).
+    """
+    best_addr = None
+    best_amount = 0
+    for change in balance_changes:
+        if change.get("coinType") != "0x2::sui::SUI":
+            continue
+        amount = int(change.get("amount", 0))
+        if amount < best_amount:
+            best_amount = amount
+            best_addr = get_address(change.get("owner"))
+    if best_addr is None:
+        print("❌ Audit Error: Could not detect sender from simulation output.")
+        sys.exit(1)
+    return best_addr
+
+
 # --- Secure Execution Configuration ---
 
 def run_simulation(ptb_command: str) -> str:
