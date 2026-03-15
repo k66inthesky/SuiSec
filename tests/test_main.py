@@ -54,3 +54,34 @@ def test_detect_sender_no_negative_exits():
     with pytest.raises(SystemExit) as exc:
         main.detect_sender(changes)
     assert exc.value.code == 1
+
+
+# --- get_address tests ---
+
+def test_get_address_plain_string():
+    """Plain string input returns the string itself."""
+    assert main.get_address("0xABC") == "0xABC"
+
+
+def test_get_address_dict_with_address_owner():
+    """Dict with AddressOwner key returns the address value."""
+    assert main.get_address({"AddressOwner": "0xABC"}) == "0xABC"
+
+
+def test_get_address_dict_without_address_owner():
+    """Dict without AddressOwner key (e.g. Shared) returns None."""
+    assert main.get_address({"Shared": {}}) is None
+
+
+def test_get_address_none_input():
+    """Non-string, non-dict input returns None."""
+    assert main.get_address(None) is None
+
+
+# --- detect_sender edge case tests ---
+
+def test_detect_sender_empty_list_exits():
+    """Exits with code 1 when balance_changes is an empty list."""
+    with pytest.raises(SystemExit) as exc:
+        main.detect_sender([])
+    assert exc.value.code == 1

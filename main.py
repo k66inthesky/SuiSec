@@ -3,14 +3,14 @@ import json
 import subprocess
 import shlex
 import re
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 # --- Constants ---
 
 SYSTEM_ADDRESSES = {"0x1", "0x2", "0x3", "0x5", "0x6", "0x7", "0x8"}
 
 
-def get_address(owner_field) -> str:
+def get_address(owner_field: Any) -> Optional[str]:
     """Extract address string from owner field (plain string or {"AddressOwner": ...} dict)."""
     if isinstance(owner_field, str):
         return owner_field
@@ -31,9 +31,12 @@ def detect_sender(balance_changes: List[Dict[str, Any]]) -> str:
         if change.get("coinType") != "0x2::sui::SUI":
             continue
         amount = int(change.get("amount", 0))
+        addr = get_address(change.get("owner"))
+        if addr is None:
+            continue
         if amount < best_amount:
             best_amount = amount
-            best_addr = get_address(change.get("owner"))
+            best_addr = addr
     if best_addr is None:
         print("❌ Audit Error: Could not detect sender from simulation output.")
         sys.exit(1)
