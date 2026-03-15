@@ -121,7 +121,7 @@ If the automated audit is not available (e.g. network issues, unsupported flags)
 | Threat | Detection Method |
 |--------|-----------------|
 | **PRICE_MISMATCH** | More than one non-system address receives SUI. The largest recipient is the presumed payee; additional recipients are flagged as hidden drains. |
-| **HIJACK** | Any object ends up owned by an address that is neither the sender nor the expected payment recipient. |
+| **HIJACK** | Any `mutated` object ends up owned by an address that is neither the sender nor a known system address. Transfer-based object theft (`transferred` type) requires declared-recipient intent and is handled via the manual fallback checklist. |
 
 ### Manual Detection Patterns (for advanced review or fallback)
 

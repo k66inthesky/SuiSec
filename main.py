@@ -3,7 +3,7 @@ import json
 import subprocess
 import shlex
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 
 # --- Constants ---
 
@@ -45,13 +45,13 @@ def detect_sender(balance_changes: List[Dict[str, Any]]) -> str:
 
 # --- Secure Execution Configuration ---
 
-def run_simulation(ptb_command: str) -> str:
+def run_simulation(sui_command: str) -> str:
     """
     Safely executes Sui commands. Uses shell=False and shlex to prevent command injection vulnerabilities.
     """
     try:
         # Securely split the string into an argument list using shlex.split
-        args = shlex.split(ptb_command)
+        args = shlex.split(sui_command)
         
         # Security check: Force the first command to be strictly 'sui'
         if not args or args[0] != 'sui':
@@ -113,12 +113,11 @@ def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner
         print(f"   Hidden drain of {actual_sui_loss - intended_cost:.4f} SUI.")
         return True
     else:
-        print(f"✅ [RESULT] SAFE TO SIGN.")
+        print(f"✅ [PRICE] No mismatch detected.")
         return False
 
 
-
-def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> List[tuple]:
+def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> List[Tuple[str, str]]:
     """
     Analyzes object changes for ownership hijacking.
     Checks 'mutated' type only — 'transferred' is excluded (requires declared-recipient intent).
@@ -176,7 +175,11 @@ def main():
         is_malicious = audit_balance_changes(json_data, intended_cost, sender_addr)
         hijacked = audit_object_changes(json_data, sender_addr)
 
-        # 5. Print closing separator and exit
+        # 5. Print consolidated verdict and closing separator
+        if is_malicious or hijacked:
+            print("🛑 BLOCKING MALICIOUS TRANSACTION")
+        else:
+            print("✅ SAFE TO SIGN — transaction matches intent.")
         print("="*45 + "\n")
 
         if is_malicious or hijacked:
