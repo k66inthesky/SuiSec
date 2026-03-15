@@ -1,5 +1,5 @@
 ---
-name: suisec
+name: SuiSec
 description: "Sui Secure - Pre-simulate transactions via sui client call --dry-run and sui client ptb --dry-run, compare results against user intent to detect malicious contract behavior. Only execute if intent matches; block otherwise."
 user-invocable: true
 metadata: {"openclaw":{"emoji":"🛡️","requires":{"bins":["sui","python3"]},"install":[{"kind":"brew","bins":["sui"]}]}}
@@ -15,15 +15,19 @@ You are a security gatekeeper for Sui on-chain transactions. When a user wants t
 
 ### Automated Audit (main.py v2.0.0)
 
-For `sui client ptb` commands, run the automated auditor **before anything else**:
+For `sui client ptb` **and** `sui client call` commands, run the automated auditor **before anything else**:
 
 ```bash
 python3 main.py <INTENDED_SUI_COST> '<FULL_SUI_COMMAND>'
 ```
 
-**Example:**
+**Examples:**
 ```bash
+# sui client ptb:
 python3 main.py 0.01 'sui client ptb --move-call 0xPKG::module::function @0xCOIN @0xNFT --gas-budget 20000000'
+
+# sui client call:
+python3 main.py 0.01 'sui client call --package 0xPKG --module module --function function --args @0xCOIN --gas-budget 20000000'
 ```
 
 SuiSec will automatically:
@@ -60,25 +64,16 @@ Break down the intent into verifiable items:
 
 ### Step 2 — Run SuiSec Automated Audit
 
-**For `sui client ptb` commands** (primary path):
+**For both `sui client ptb` and `sui client call` commands** (automated path):
 ```bash
-python3 main.py <INTENDED_SUI> '<FULL_SUI_PTB_COMMAND>'
+python3 main.py <INTENDED_SUI> '<FULL_SUI_COMMAND>'
 ```
 
-**For `sui client call` commands** (manual path — main.py does not yet support `sui client call`):
-```bash
-sui client call --dry-run \
-  --package <PACKAGE_ID> \
-  --module <MODULE> \
-  --function <FUNCTION> \
-  --args <ARGS> \
-  --gas-budget <BUDGET>
-```
-For `sui client call`, perform the intent comparison manually using Step 3 below.
+Both command types are supported. SuiSec injects `--dry-run --json` and parses the output automatically.
 
 ### Step 3 — Intent Comparison Analysis (Manual Fallback)
 
-If the automated audit is not available (e.g. `sui client call`), compare dry-run results against user intent item by item:
+If the automated audit is not available (e.g. network issues, unsupported flags), compare dry-run results against user intent item by item:
 
 | Check Item | Comparison Logic | Result |
 |-----------|-----------------|--------|
@@ -93,9 +88,13 @@ If the automated audit is not available (e.g. `sui client call`), compare dry-ru
 
 **SAFE TO SIGN (all checks pass) → Approve execution**
 - Inform the user: "SuiSec audit passed. Dry-run results are consistent with your intent. Ready to execute."
-- Remove the `--dry-run` flag and execute the real transaction:
+- Remove the `--dry-run` flag and execute the original transaction (use whichever form was audited):
   ```bash
+  # For sui client ptb:
   sui client ptb <PTB_COMMANDS>
+
+  # For sui client call:
+  sui client call --package <PKG> --module <MOD> --function <FN> --args <ARGS> --gas-budget <BUDGET>
   ```
 - Report the transaction digest and execution result.
 
@@ -122,9 +121,9 @@ If the automated audit is not available (e.g. `sui client call`), compare dry-ru
 | Threat | Detection Method |
 |--------|-----------------|
 | **PRICE_MISMATCH** | More than one non-system address receives SUI. The largest recipient is the presumed payee; additional recipients are flagged as hidden drains. |
-| **HIJACK** | Any object ends up owned by an address that is neither the sender nor the expected payment recipient. |
+| **HIJACK** | Any `mutated` object ends up owned by an address that is neither the sender nor a known system address. Transfer-based object theft (`transferred` type) requires declared-recipient intent and is handled via the manual fallback checklist. |
 
-### Manual Detection Patterns (for `sui client call` or advanced review)
+### Manual Detection Patterns (for advanced review or fallback)
 
 Pay special attention to these malicious behaviors during dry-run comparison:
 
