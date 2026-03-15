@@ -157,3 +157,78 @@ def test_main_cost_is_argv1_not_argv2(monkeypatch):
     with pytest.raises(SystemExit) as exc:
         main.main()
     assert exc.value.code == 1
+
+
+# --- audit_object_changes tests ---
+
+def test_audit_object_changes_returns_empty_when_safe():
+    """Returns empty list when no mutated objects are diverted to non-sender."""
+    json_data = {
+        "objectChanges": [
+            {"type": "mutated", "objectId": "0xOBJ1", "owner": {"AddressOwner": "0xSENDER"}},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert result == []
+
+
+def test_audit_object_changes_detects_hijack(capsys):
+    """Returns list of hijacked objects when mutated object owner is not sender."""
+    json_data = {
+        "objectChanges": [
+            {"type": "mutated", "objectId": "0xOBJ1", "owner": {"AddressOwner": "0xATTACKER"}},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert len(result) == 1
+    assert result[0] == ("0xOBJ1", "0xATTACKER")
+    captured = capsys.readouterr()
+    assert "HIJACK" in captured.out
+    assert "0xOBJ1" in captured.out
+
+
+def test_audit_object_changes_ignores_transferred_type():
+    """Does not flag 'transferred' type objects (only 'mutated' is checked)."""
+    json_data = {
+        "objectChanges": [
+            {"type": "transferred", "objectId": "0xOBJ1", "owner": {"AddressOwner": "0xATTACKER"}},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert result == []
+
+
+def test_audit_object_changes_ignores_system_addresses():
+    """Does not flag objects owned by known Sui system addresses."""
+    for addr in ["0x1", "0x2", "0x3", "0x5", "0x6", "0x7", "0x8"]:
+        json_data = {
+            "objectChanges": [
+                {"type": "mutated", "objectId": "0xOBJ1", "owner": {"AddressOwner": addr}},
+            ]
+        }
+        result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+        assert result == [], f"System address {addr} should not be flagged"
+
+
+def test_audit_object_changes_handles_plain_string_owner():
+    """Handles owner as a plain address string (not nested dict)."""
+    json_data = {
+        "objectChanges": [
+            {"type": "mutated", "objectId": "0xOBJ1", "owner": "0xATTACKER"},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert len(result) == 1
+
+
+def test_audit_object_changes_multiple_hijacks():
+    """Detects and returns all hijacked objects."""
+    json_data = {
+        "objectChanges": [
+            {"type": "mutated", "objectId": "0xOBJ1", "owner": "0xATTACKER"},
+            {"type": "mutated", "objectId": "0xOBJ2", "owner": "0xSENDER"},  # safe
+            {"type": "mutated", "objectId": "0xOBJ3", "owner": "0xATTACKER"},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert len(result) == 2

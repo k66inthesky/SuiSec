@@ -119,8 +119,31 @@ def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner
 
 
 def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> List[tuple]:
-    """Stub — implemented in Task 4."""
-    return []
+    """
+    Analyzes object changes for ownership hijacking.
+    Checks 'mutated' type only — 'transferred' is excluded (requires declared-recipient intent).
+    Returns list of (object_id, new_owner) tuples for hijacked objects.
+    Prints a line per hijack inside the open audit report block.
+
+    Note: get_address() returns None for non-AddressOwner owner dicts (e.g. shared objects
+    use {"Shared": {...}}). The None guard below silently passes shared objects through —
+    this is intentional; shared objects are not expected to be hijacked.
+    """
+    object_changes = json_data.get("objectChanges", [])
+    hijacked = []
+
+    for obj in object_changes:
+        if obj.get("type") != "mutated":
+            continue
+        new_owner = get_address(obj.get("owner"))
+        if new_owner is None:
+            continue  # shared object or unknown owner format — skip
+        if new_owner != sender_addr and new_owner not in SYSTEM_ADDRESSES:
+            obj_id = obj.get("objectId", "unknown")
+            hijacked.append((obj_id, new_owner))
+            print(f"🚨 [HIJACK] Object {obj_id} diverted to {new_owner}")
+
+    return hijacked
 
 
 def main():
