@@ -85,3 +85,77 @@ def test_detect_sender_empty_list_exits():
     with pytest.raises(SystemExit) as exc:
         main.detect_sender([])
     assert exc.value.code == 1
+
+
+# --- audit_balance_changes tests ---
+
+def test_audit_balance_changes_returns_false_when_safe(capsys):
+    """Returns False when actual loss is within intended cost + gas buffer."""
+    json_data = {
+        "balanceChanges": [
+            {"coinType": "0x2::sui::SUI", "amount": "-10000000", "owner": "0xSENDER"},
+        ]
+    }
+    result = main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
+    assert result is False
+
+
+def test_audit_balance_changes_returns_true_when_price_mismatch(capsys):
+    """Returns True when actual loss exceeds intended cost + 0.02 SUI buffer."""
+    json_data = {
+        "balanceChanges": [
+            # 0.12 SUI drained, user intended 0.01 — exceeds 0.01 + 0.02 buffer
+            {"coinType": "0x2::sui::SUI", "amount": "-120000000", "owner": "0xSENDER"},
+        ]
+    }
+    result = main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
+    assert result is True
+
+
+def test_audit_balance_changes_does_not_exit(capsys):
+    """Does not call sys.exit() — returns bool so both checks can always run."""
+    json_data = {
+        "balanceChanges": [
+            {"coinType": "0x2::sui::SUI", "amount": "-120000000", "owner": "0xSENDER"},
+        ]
+    }
+    try:
+        result = main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
+    except SystemExit:
+        pytest.fail("audit_balance_changes() must not call sys.exit()")
+    assert result is True
+
+
+def test_audit_balance_changes_no_closing_separator(capsys):
+    """Does not print the closing '===' separator — that is printed by main() after both checks."""
+    json_data = {
+        "balanceChanges": [
+            {"coinType": "0x2::sui::SUI", "amount": "-10000000", "owner": "0xSENDER"},
+        ]
+    }
+    main.audit_balance_changes(json_data, intended_cost=0.01, owner_addr="0xSENDER")
+    captured = capsys.readouterr()
+    lines = captured.out.strip().splitlines()
+    # The last meaningful line should be the RESULT line, not a closing '===' separator
+    assert not lines[-1].startswith("=" * 10), (
+        "audit_balance_changes() must not print the closing separator — main() owns that"
+    )
+
+
+# --- main() arg order tests ---
+
+def test_main_exits_when_too_few_args(monkeypatch):
+    """Exits with code 1 when fewer than 3 argv entries are provided."""
+    monkeypatch.setattr(sys, "argv", ["main.py", "0.01"])
+    with pytest.raises(SystemExit) as exc:
+        main.main()
+    assert exc.value.code == 1
+
+
+def test_main_cost_is_argv1_not_argv2(monkeypatch):
+    """Cost is argv[1] — a non-float argv[1] raises ValueError, not argv[2]."""
+    # If arg order were swapped (command first), "not_a_float" in argv[1] would
+    # be passed to run_simulation() instead of float(), and no ValueError would occur.
+    monkeypatch.setattr(sys, "argv", ["main.py", "not_a_float", "sui client ptb --gas-budget 1"])
+    with pytest.raises((SystemExit, ValueError)):
+        main.main()

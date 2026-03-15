@@ -85,32 +85,22 @@ def run_simulation(ptb_command: str) -> str:
 
 # --- Audit Logic ---
 
-def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner_addr: str):
+def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner_addr: str) -> bool:
     """
-    Analyzes balance changes to detect excessive spending and asset hijacking.
+    Analyzes balance changes for excessive spending.
+    Returns True if malicious (price mismatch), False if safe.
+    Does NOT call sys.exit() — allows both checks to always run.
     """
     balance_changes = json_data.get("balanceChanges", [])
     actual_sui_loss = 0.0
-    
-    # 1. Detect SUI expenditure (PRICE_MISMATCH)
+
     for change in balance_changes:
-        if (change.get("owner") == owner_addr or change.get("owner", {}).get("AddressOwner") == owner_addr) \
+        if get_address(change.get("owner")) == owner_addr \
            and change.get("coinType") == "0x2::sui::SUI":
             amount = int(change.get("amount", 0))
             if amount < 0:
                 actual_sui_loss += abs(amount) / 1e9
 
-    # 2. Detect object ownership changes (HIJACK)
-    # Check if objects originally owned by the user are transferred to others in objectChanges
-    object_changes = json_data.get("objectChanges", [])
-    hijacked_objects = []
-    for obj in object_changes:
-        if obj.get("type") == "mutated":
-            # Simple logic: If an object was user-held but is now transferred to a non-user address (e.g., 0xdeadbeef)
-            # This section can be expanded based on actual simulation data
-            pass 
-
-    # --- Output Results ---
     print("\n" + "="*45)
     print("        🛡️  SUISEC AUDIT REPORT 🛡️")
     print("="*45)
@@ -118,35 +108,52 @@ def audit_balance_changes(json_data: Dict[str, Any], intended_cost: float, owner
     print(f"Actual Loss    : {actual_sui_loss:>10.4f} SUI")
     print("-" * 45)
 
-    # Criteria: Actual expenditure should not exceed intended cost (plus a 0.02 Gas buffer)
     if actual_sui_loss > (intended_cost + 0.02):
         print(f"🚨 [RESULT] ❌ MALICIOUS: Price mismatch detected!")
         print(f"   Hidden drain of {actual_sui_loss - intended_cost:.4f} SUI.")
-        sys.exit(1)
+        return True
     else:
         print(f"✅ [RESULT] SAFE TO SIGN.")
-    print("="*45 + "\n")
+        return False
+
+def audit_object_changes(json_data: Dict[str, Any], sender_addr: str) -> list:
+    """Stub — implemented in Task 4."""
+    return []
+
 
 def main():
-    if len(sys.argv) < 4:
-        print("Usage: python3 main.py '<ptb_command>' <intended_cost> <owner_address>")
+    if len(sys.argv) < 3:
+        print("Usage: python3 main.py <intended_cost> '<sui_command>'")
         sys.exit(1)
 
-    raw_cmd = sys.argv[1]
-    intended_cost = float(sys.argv[2])
-    owner_addr = sys.argv[3]
+    intended_cost = float(sys.argv[1])
+    raw_cmd = sys.argv[2]
 
     # 1. Execute secure simulation
     raw_output = run_simulation(raw_cmd)
-    
+
     # 2. Parse JSON (filtering out potential ASCII warning text from Sui CLI)
     try:
         json_start = raw_output.find('{')
-        if json_start == -1: raise ValueError("No JSON found")
+        if json_start == -1:
+            raise ValueError("No JSON found")
         json_data = json.loads(raw_output[json_start:])
-        
-        # 3. Perform the audit
-        audit_balance_changes(json_data, intended_cost, owner_addr)
+
+        # 3. Auto-detect sender from simulation output
+        sender_addr = detect_sender(json_data.get("balanceChanges", []))
+
+        # 4. Run both checks — neither short-circuits the other
+        is_malicious = audit_balance_changes(json_data, intended_cost, sender_addr)
+        hijacked = audit_object_changes(json_data, sender_addr)
+
+        # 5. Print closing separator and exit
+        print("="*45 + "\n")
+
+        if is_malicious or hijacked:
+            sys.exit(1)
+
+    except SystemExit:
+        raise
     except Exception as e:
         print(f"❌ Audit Error: Failed to parse simulation data. {e}")
         sys.exit(1)
