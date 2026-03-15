@@ -210,8 +210,8 @@ def test_audit_object_changes_ignores_system_addresses():
         assert result == [], f"System address {addr} should not be flagged"
 
 
-def test_audit_object_changes_handles_plain_string_owner():
-    """Handles owner as a plain address string (not nested dict)."""
+def test_audit_object_changes_handles_plain_string_owner(capsys):
+    """Handles owner as a plain address string (not nested dict) — detects hijack and warns."""
     json_data = {
         "objectChanges": [
             {"type": "mutated", "objectId": "0xOBJ1", "owner": "0xATTACKER"},
@@ -219,6 +219,9 @@ def test_audit_object_changes_handles_plain_string_owner():
     }
     result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
     assert len(result) == 1
+    assert result[0] == ("0xOBJ1", "0xATTACKER")
+    captured = capsys.readouterr()
+    assert "HIJACK" in captured.out
 
 
 def test_audit_object_changes_multiple_hijacks():
@@ -232,3 +235,20 @@ def test_audit_object_changes_multiple_hijacks():
     }
     result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
     assert len(result) == 2
+
+
+def test_audit_object_changes_flags_non_system_address_0x4():
+    """0x4 is not in SYSTEM_ADDRESSES — objects owned by 0x4 should be flagged."""
+    json_data = {
+        "objectChanges": [
+            {"type": "mutated", "objectId": "0xOBJ1", "owner": {"AddressOwner": "0x4"}},
+        ]
+    }
+    result = main.audit_object_changes(json_data, sender_addr="0xSENDER")
+    assert len(result) == 1, "0x4 is not a trusted system address and should be flagged as HIJACK"
+
+
+def test_audit_object_changes_missing_key_returns_empty():
+    """Returns empty list when 'objectChanges' key is absent from json_data."""
+    result = main.audit_object_changes({}, sender_addr="0xSENDER")
+    assert result == []
